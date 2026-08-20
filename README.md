@@ -29,7 +29,9 @@ scripts/import_legacy.py  타임폴리오 과거 주간 엑셀 -> CSV (최초 1�
 scripts/payload.py        TOP10·편출입·추이 집계
 scripts/render.py         docs/index.html 생성
 data/<티커>/YYYYMMDD.csv  날짜별 구성종목 = 이력 그 자체
-data/_legacy/             타임폴리오 과거 엑셀 원본
+data/_legacy/             사이트에서 못 받는 과거 이력 엑셀
+                          파일명 앞 6자리가 대상 ETF 티커
+                          (예: 466950_tiger_daily.xlsx)
 docs/index.html           대시보드 (GitHub Pages가 서빙)
 ```
 

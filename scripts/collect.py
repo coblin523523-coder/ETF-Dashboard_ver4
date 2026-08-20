@@ -73,6 +73,8 @@ def collect_etf(etf: dict, dates: list[str], force: bool) -> int:
 
     saved = 0
     errors: dict[str, int] = {}
+    streak = 0          # 연속 실패 횟수
+    ABORT_AFTER = 5     # 같은 오류가 이만큼 이어지면 이 ETF는 포기한다
     for date in dates:
         target = DATA_DIR / ticker / f"{date}.csv"
         if target.exists() and not force:
@@ -85,8 +87,14 @@ def collect_etf(etf: dict, dates: list[str], force: bool) -> int:
             errors[key] = errors.get(key, 0) + 1
             if errors[key] <= 2:          # 같은 오류는 두 번까지만 자세히
                 print(f"   {date}: 실패 {key}")
+            streak += 1
+            if streak >= ABORT_AFTER:
+                print(f"   연속 {streak}회 실패 → 남은 {len(dates) - dates.index(date) - 1}일은 "
+                      f"시도하지 않습니다 (사이트 접근 불가로 판단)")
+                break
             continue
 
+        streak = 0
         if df is None or df.empty:
             continue
 
