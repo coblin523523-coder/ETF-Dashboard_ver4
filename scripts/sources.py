@@ -211,22 +211,68 @@ def _mirae_session(ksd_fund: str) -> requests.Session:
     return sess
 
 
+_MIRAE_CFFI = None
+
+
+def _mirae_cffi(ksd_fund: str):
+    """크롬 TLS 지문으로 위장한 세션.
+
+    미래에셋은 파이썬 requests 의 TLS 지문을 보고 403 을 돌려준다.
+    curl_cffi 는 크롬과 동일한 지문으로 접속해 그 검사를 통과한다.
+    라이브러리가 없으면 None 을 돌려주고 일반 requests 로 넘어간다.
+    """
+    global _MIRAE_CFFI
+    if _MIRAE_CFFI is not None:
+        return _MIRAE_CFFI
+    try:
+        from curl_cffi import requests as creq
+    except ImportError:
+        return None
+
+    sess = creq.Session(impersonate="chrome")
+    sess.headers.update({
+        "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+        "Referer": f"{MIRAE_DETAIL}?ksdFund={ksd_fund}",
+        "Origin": "https://investments.miraeasset.com",
+        "X-Requested-With": "XMLHttpRequest",
+    })
+    try:
+        sess.get(f"{MIRAE_DETAIL}?ksdFund={ksd_fund}", timeout=TIMEOUT)
+    except Exception:
+        pass
+    _MIRAE_CFFI = sess
+    return sess
+
+
 def fetch_mirae(params: dict, date: str) -> pd.DataFrame:
     """TIGER. 응답의 code 가 ISIN 이라 종목 식별이 가장 깔끔하다."""
     q = {"ksdFund": params["ksd_fund"], "prfPrd": "Week01",
          "fixDate": date, "listCnt": "300"}
-    s = _mirae_session(params["ksd_fund"])
 
-    resp = s.post(MIRAE_URL, params=q, timeout=TIMEOUT)
-    if resp.status_code == 403:
-        # 쿠키가 만료됐을 수 있으니 세션을 새로 만들어 한 번 더
-        global _MIRAE_SESSION
-        _MIRAE_SESSION = None
+    resp = None
+    cffi = _mirae_cffi(params["ksd_fund"])
+    if cffi is not None:
+        try:
+            r = cffi.post(MIRAE_URL, params=q, timeout=TIMEOUT)
+            if r.status_code == 200:
+                resp = r
+        except Exception:
+            resp = None
+
+    if resp is None:
         s = _mirae_session(params["ksd_fund"])
-        resp = s.post(MIRAE_URL, params=q, timeout=TIMEOUT)
-    if resp.status_code != 200:
-        resp = s.get(MIRAE_URL, params=q, timeout=TIMEOUT)
-    resp.raise_for_status()
+        r = s.post(MIRAE_URL, params=q, timeout=TIMEOUT)
+        if r.status_code != 200:
+            r = s.get(MIRAE_URL, params=q, timeout=TIMEOUT)
+        if r.status_code == 200:
+            resp = r
+        else:
+            # 마지막 수단: 상세페이지 HTML 을 타임폴리오처럼 긁는다.
+            # 성공하면 화면에 보이는 상위 종목만 얻는다(전체 목록은 아님).
+            df = _mirae_from_page(params["ksd_fund"], date)
+            if not df.empty:
+                return df
+            r.raise_for_status()
 
     data = resp.json().get("rtnData") or []
     rows = [{
@@ -335,6 +381,54 @@ def fetch_timefolio(params: dict, date: str) -> pd.DataFrame:
     except Exception as exc:
         print(f"    [!] TIMEFOLIO HTML 실패: {type(exc).__name__}: {exc}")
         return pd.DataFrame()
+
+
+def _mirae_from_page(ksd_fund: str, date: str) -> pd.DataFrame:
+    """상세페이지 HTML 에서 구성종목 표를 직접 읽는다 (ajax 가 막혔을 때의 우회로).
+
+    주의할 점이 둘 있다.
+      - 이 경로로는 오늘치만 얻을 수 있다. 페이지에 날짜 선택이 반영되지 않는다.
+      - 페이지가 처음에 상위 10종목만 그리므로 전체 목록이 아닐 수 있다.
+        Top10 대시보드에는 충분하지만, 비중 합계는 100%가 되지 않는다.
+    """
+    # 이 경로는 항상 '오늘 화면'을 준다. 과거 날짜로 250번 부르면 같은 데이터를
+    # 반복해서 받게 되므로, 최근 며칠 요청에 대해서만 시도한다.
+    try:
+        from datetime import datetime, timedelta
+        if datetime.strptime(date, "%Y%m%d") < datetime.now() - timedelta(days=6):
+            return pd.DataFrame()
+    except ValueError:
+        return pd.DataFrame()
+
+    url = f"{MIRAE_DETAIL}?ksdFund={ksd_fund}"
+    html = None
+
+    cffi = _mirae_cffi(ksd_fund)
+    if cffi is not None:
+        try:
+            r = cffi.get(url, timeout=TIMEOUT)
+            if r.status_code == 200:
+                html = r.content
+        except Exception:
+            html = None
+
+    if html is None:
+        try:
+            r = _session().get(url, timeout=TIMEOUT,
+                               headers={"Accept": "text/html,application/xhtml+xml"})
+            if r.status_code == 200:
+                html = r.content
+        except Exception:
+            return pd.DataFrame()
+
+    if not html:
+        return pd.DataFrame()
+
+    df = _from_tabular(html, f"TIGER {date} 상세페이지")
+    if not df.empty:
+        print(f"    (TIGER {date}: 상세페이지 HTML 경로, {len(df)}종목 "
+              f"— 화면에 보이는 상위 종목만일 수 있습니다)")
+    return df
 
 
 FETCHERS = {
