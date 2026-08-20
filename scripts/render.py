@@ -89,10 +89,9 @@ CSS = """
 
   /* ETF 전환 탭 */
   .etf-tabs { display: flex; gap: 6px; margin-bottom: 18px; overflow-x: auto; padding-bottom: 2px; }
-  .etf-tabs button { flex: 0 0 auto; border: 0.5px solid var(--border); background: var(--card);
-    color: var(--text-secondary); padding: 8px 14px; border-radius: 999px; font-size: 13px;
+  .etf-tabs button { flex: 0 0 auto; border: 0.5px solid #6b6a64; background: #6b6a64;
+    color: #fff; padding: 8px 14px; border-radius: 999px; font-size: 13px;
     cursor: pointer; font-family: inherit; white-space: nowrap; }
-  .etf-tabs button { background: #6b6a64; border-color: #6b6a64; color: #fff; }
   .etf-tabs button:hover { background: var(--text); }
   .etf-tabs button.active { background: var(--text); border-color: var(--text);
     color: #fff; font-weight: 600; box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--text); }
@@ -101,7 +100,6 @@ CSS = """
     border-radius: 10px; padding: 10px 13px; font-size: 12.5px; margin-bottom: 18px; }
   /* Summary 탭 */
   .sector-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  @media (max-width: 760px) { .sector-grid { grid-template-columns: 1fr; } }
   .sector-col h3 { font-size: 16px; font-weight: 700; margin: 0 0 3px; letter-spacing: -0.2px; }
   .sector-col h3[data-t] { padding-left: 0; }
   .sector-col .col-date { font-size: 11.5px; color: var(--text-muted); margin-bottom: 6px;
@@ -129,6 +127,28 @@ CSS = """
   .ev-delta { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .ev-drivers { font-size: 11.5px; color: var(--text-secondary); margin-top: 5px; line-height: 1.6; }
   .ev-drivers b { font-variant-numeric: tabular-nums; }
+
+  /* 넓은 화면은 정식 명칭, 좁은 화면은 축약명 (아래 미디어쿼리에서 교체) */
+  .s-short { display: none; }
+  .s-full { display: inline; }
+
+  /* 좁은 화면에서도 3열을 유지한다. 대신 폭이 모자라므로 구성종목은 접고
+     섹터명과 비중만 남긴다. 비중은 이름 옆이 아니라 아래로 내려 두 줄로 쌓는다. */
+  @media (max-width: 760px) {
+    .sector-grid { gap: 10px; }
+    .sector-col h3 { font-size: 13px; }
+    .sector-col .col-date { font-size: 10px; padding-bottom: 7px; margin-bottom: 4px; }
+    .sector-item { padding: 6px 0; }
+    .sector-head { gap: 3px; align-items: baseline; }
+    .sector-name { font-size: 10.5px; white-space: nowrap; letter-spacing: -0.3px; }
+    .sector-pct { font-size: 10.5px; letter-spacing: -0.3px; }
+    .sector-cnt { display: none; }
+    .s-full { display: none; }
+    .s-short { display: inline; }
+    .sector-members { display: none; }
+    .only-wide { display: none; }
+    .sector-bar { margin: 5px 0 0; }
+  }
   .empty-state { text-align: center; padding: 40px 16px; color: var(--text-secondary); font-size: 13px; }
 
   /* 좁은 화면 */
@@ -150,7 +170,6 @@ const BASES = __BASES__;
 const SUMMARY = __SUMMARY__;
 const SUMMARY_KEY = '__summary__';
 const GRAY = '#d3d1c7';
-const VISIBLE_HISTORY = 5;
 
 let currentTicker = SUMMARY_KEY;
 let currentView = 'daily';
@@ -202,25 +221,17 @@ function renderHistory() {
   const p = PAYLOADS[currentTicker];
   if (!p.history.length) {
     el('historyBody').innerHTML = '<p class="muted">최근 변동 내역 없음</p>';
-    el('histMoreWrap').innerHTML = '';
+    el('histCount').textContent = '';
     return;
   }
-  el('historyBody').innerHTML = p.history.map((h, i) => `
-    <div class="hist-row${i >= VISIBLE_HISTORY ? ' hidden-row' : ''}"${i >= VISIBLE_HISTORY ? ' style="display:none;"' : ''}>
+  el('historyBody').innerHTML = p.history.map(h => `
+    <div class="hist-row">
       <p class="hist-date">${h.date} <span class="muted">(${h.prev_date} 대비)</span></p>
       <div style="margin-bottom:4px;">${pills(h.entries, 'in')}</div>
       <div>${pills(h.exits, 'out')}</div>
     </div>`).join('');
-
-  const remaining = Math.max(0, p.history.length - VISIBLE_HISTORY);
-  el('histMoreWrap').innerHTML = remaining > 0
-    ? `<button class="more-btn" id="histMoreBtn">더보기 (${remaining}건)</button>` : '';
-  if (remaining > 0) {
-    el('histMoreBtn').addEventListener('click', function () {
-      document.querySelectorAll('.hidden-row').forEach(x => x.style.display = 'block');
-      this.style.display = 'none';
-    });
-  }
+  el('histCount').textContent = `총 ${p.history.length}건 · 위아래로 스크롤`;
+  el('historyBody').parentElement.scrollTop = 0;
 }
 
 /* ---------- 누적 편입·편출 ---------- */
@@ -362,8 +373,8 @@ function renderSectorGrid() {
       const more = x.count > x.members.length ? ` 외 ${x.count - x.members.length}` : '';
       return `<div class="sector-item">
         <div class="sector-head">
-          <span class="sector-name">${esc(sec)}<span class="sector-cnt">${x.count}종목</span></span>
-          <span class="sector-pct">${x.weight.toFixed(2)}%</span>
+          <span class="sector-name"><span class="s-full">${esc(sec)}</span><span class="s-short">${esc(x.short || sec)}</span><span class="sector-cnt">${x.count}종목</span></span>
+          <span class="sector-pct"><span class="s-full">${x.weight.toFixed(2)}%</span><span class="s-short">${x.weight.toFixed(1)}%</span></span>
         </div>
         <div class="sector-bar"><i style="width:${(x.weight / max * 100).toFixed(1)}%"></i></div>
         <div class="sector-members">${names}${more}</div>
@@ -564,7 +575,7 @@ def render(payloads: dict, bases: dict, summary_data: dict) -> str:
   <div id="summaryPanel" style="display:none;">
     <div class="card">
       <h2>주요 투자 섹터</h2>
-      <p class="muted" style="margin:-8px 0 16px;">각 ETF의 최신 기준일 기준 · 섹터 아래는 그 섹터에 속한 상위 종목</p>
+      <p class="muted" style="margin:-8px 0 16px;">각 ETF의 최신 기준일 기준<span class="only-wide"> · 섹터 아래는 그 섹터에 속한 상위 종목</span></p>
       <div class="sector-grid" id="sectorGrid"></div>
     </div>
 
@@ -603,8 +614,8 @@ def render(payloads: dict, bases: dict, summary_data: dict) -> str:
           <span style="display:flex; align-items:center; gap:4px;"><span class="sw" style="background:var(--down);"></span>편출</span>
         </div>
       </div>
-      <div id="historyBody"></div>
-      <div id="histMoreWrap"></div>
+      <div class="ev-scroll"><div id="historyBody"></div></div>
+      <div class="ev-count" id="histCount"></div>
     </div>
 
     <div class="card">

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import collections
 
-from sectors import SECTOR_ORDER, classify, sort_key
+from sectors import SECTOR_ORDER, classify, short_name, sort_key
 
 # 이만큼(%p) 이상 움직인 섹터만 '변화'로 본다.
 # 너무 낮추면 매일 잡음이 쌓이고, 너무 높이면 흐름을 놓친다.
@@ -61,6 +61,7 @@ def latest_breakdown(records: list[dict]) -> dict | None:
     sectors = [
         {
             "sector": s,
+            "short": short_name(s),
             "weight": round(w, 2),
             "count": len(members.get(s, [])),
             "members": members.get(s, [])[:8],
