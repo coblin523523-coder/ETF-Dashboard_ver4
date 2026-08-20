@@ -36,7 +36,11 @@ ETFS = [
         "short": "TIGER AI",
         "source": "mirae",
         "params": {"ksd_fund": "KR7466950003"},
-        "backfill": True,
+        # 미래에셋은 해외 데이터센터 IP를 방화벽에서 막는다(홈페이지조차 403).
+        # 그래서 GitHub 서버에서는 수집이 불가능하고, 이력은 data/_legacy 의
+        # 엑셀에서 가져온다. 차단이 풀릴 수도 있으니 최신일 하루만 찔러본다.
+        "backfill": False,
+        "note": "미래에셋이 서버 IP를 차단 중 · 이력은 주기적 엑셀 갱신으로 보충",
     },
 ]
 

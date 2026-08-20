@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 
 from config import DOCS_DIR, ETFS
 from payload import build_payload, load_records
+import summary as summary_mod
 
 KST = ZoneInfo("Asia/Seoul")
 
@@ -95,6 +96,30 @@ CSS = """
     color: #fff; font-weight: 600; }
   .warn { background: #fff8e6; border: 0.5px solid #f0d089; color: #6b5312;
     border-radius: 10px; padding: 10px 13px; font-size: 12.5px; margin-bottom: 18px; }
+  /* Summary 탭 */
+  .sector-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  @media (max-width: 760px) { .sector-grid { grid-template-columns: 1fr; } }
+  .sector-col h3 { font-size: 13px; font-weight: 600; margin: 0 0 2px; }
+  .sector-col .col-date { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+  .sector-item { padding: 9px 0; border-bottom: 0.5px solid var(--border); }
+  .sector-item:last-child { border-bottom: none; }
+  .sector-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .sector-name { font-size: 12.5px; font-weight: 600; }
+  .sector-pct { font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sector-cnt { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+  .sector-bar { height: 3px; background: var(--border); border-radius: 2px; margin: 6px 0 5px; overflow: hidden; }
+  .sector-bar > i { display: block; height: 100%; background: var(--accent); }
+  .sector-members { font-size: 11px; color: var(--text-muted); line-height: 1.55; }
+  .ev-row { padding: 11px 0; border-bottom: 0.5px solid var(--border); }
+  .ev-row:last-of-type { border-bottom: none; }
+  .ev-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .ev-date { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    background: var(--bg); border: 0.5px solid var(--border); color: var(--text-secondary); }
+  .ev-sector { font-size: 13px; font-weight: 600; }
+  .ev-delta { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .ev-drivers { font-size: 11.5px; color: var(--text-secondary); margin-top: 5px; line-height: 1.6; }
+  .ev-drivers b { font-variant-numeric: tabular-nums; }
   .empty-state { text-align: center; padding: 40px 16px; color: var(--text-secondary); font-size: 13px; }
 
   /* 좁은 화면 */
@@ -113,10 +138,13 @@ const ETFS = __ETFS__;
 const PAYLOADS = __PAYLOADS__;
 const NAME_COLORS = __NAME_COLORS__;
 const BASES = __BASES__;
+const SUMMARY = __SUMMARY__;
+const SUMMARY_KEY = '__summary__';
+const VISIBLE_EVENTS = 12;
 const GRAY = '#d3d1c7';
 const VISIBLE_HISTORY = 5;
 
-let currentTicker = ETFS[0].ticker;
+let currentTicker = SUMMARY_KEY;
 let currentView = 'daily';
 let trendChart = null;
 
@@ -125,7 +153,8 @@ const el = (id) => document.getElementById(id);
 
 /* ---------- ETF 탭 ---------- */
 function buildTabs() {
-  el('etfTabs').innerHTML = ETFS.map(e =>
+  const tabs = [{ticker: SUMMARY_KEY, short: 'Summary'}].concat(ETFS);
+  el('etfTabs').innerHTML = tabs.map(e =>
     `<button type="button" data-ticker="${e.ticker}" class="${e.ticker === currentTicker ? 'active' : ''}">${esc(e.short)}</button>`
   ).join('');
   document.querySelectorAll('#etfTabs button').forEach(btn => {
@@ -306,8 +335,99 @@ function renderView(view) {
   });
 }
 
+/* ---------- Summary 탭 ---------- */
+function renderSectorGrid() {
+  const order = SUMMARY.sector_order || [];
+  el('sectorGrid').innerHTML = ETFS.map(e => {
+    const b = SUMMARY.breakdown[e.ticker];
+    if (!b) {
+      return `<div class="sector-col"><h3>${esc(e.short)}</h3>
+        <div class="col-date">데이터 없음</div></div>`;
+    }
+    const bySector = {};
+    b.sectors.forEach(x => { bySector[x.sector] = x; });
+    const max = Math.max.apply(null, b.sectors.map(x => x.weight).concat([1]));
+
+    const items = order.map(sec => {
+      const x = bySector[sec];
+      if (!x || x.weight <= 0) return '';
+      const names = x.members.map(m => esc(m.name) + ' ' + m.weight.toFixed(1)).join(' · ');
+      const more = x.count > x.members.length ? ` 외 ${x.count - x.members.length}` : '';
+      return `<div class="sector-item">
+        <div class="sector-head">
+          <span class="sector-name">${esc(sec)}<span class="sector-cnt">${x.count}종목</span></span>
+          <span class="sector-pct">${x.weight.toFixed(2)}%</span>
+        </div>
+        <div class="sector-bar"><i style="width:${(x.weight / max * 100).toFixed(1)}%"></i></div>
+        <div class="sector-members">${names}${more}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="sector-col">
+      <h3>${esc(e.short)}</h3>
+      <div class="col-date">${esc(b.date)} 기준</div>
+      ${items}
+    </div>`;
+  }).join('');
+}
+
+function renderSectorEvents() {
+  const evs = SUMMARY.events || [];
+  if (!evs.length) {
+    el('sectorEvents').innerHTML = '<p class="muted">아직 기록된 섹터 변화가 없습니다.</p>';
+    el('sectorMoreWrap').innerHTML = '';
+    return;
+  }
+
+  el('sectorEvents').innerHTML = evs.map((ev, i) => {
+    const up = ev.delta > 0;
+    const cls = up ? 'up' : 'down';
+    const drivers = (ev.drivers || []).map(d => {
+      const tag = d.status ? ` <span class="badge">${esc(d.status)}</span>` : '';
+      const sign = d.delta > 0 ? '+' : '';
+      return `${esc(d.name)} <b class="${d.delta > 0 ? 'up' : 'down'}">${sign}${d.delta.toFixed(2)}%p</b>${tag}`;
+    }).join(' · ');
+    return `<div class="ev-row${i >= VISIBLE_EVENTS ? ' hidden-ev' : ''}"${i >= VISIBLE_EVENTS ? ' style="display:none;"' : ''}>
+      <div class="ev-head">
+        <span class="ev-date">${esc(ev.date)}</span>
+        <span class="badge">${esc(ev.etf)}</span>
+        <span class="ev-sector">${esc(ev.sector)}</span>
+        <span class="ev-delta ${cls}">${ev.prev.toFixed(1)}% → ${ev.cur.toFixed(1)}% (${up ? '+' : ''}${ev.delta.toFixed(1)}%p)</span>
+      </div>
+      <div class="ev-drivers">${esc(ev.prev_date)} 대비${drivers ? ' · 주도 ' + drivers : ''}</div>
+    </div>`;
+  }).join('');
+
+  const rest = Math.max(0, evs.length - VISIBLE_EVENTS);
+  el('sectorMoreWrap').innerHTML = rest > 0
+    ? `<button class="more-btn" id="evMoreBtn">더보기 (${rest}건)</button>` : '';
+  if (rest > 0) {
+    el('evMoreBtn').addEventListener('click', function () {
+      document.querySelectorAll('.hidden-ev').forEach(x => x.style.display = 'block');
+      this.style.display = 'none';
+    });
+  }
+}
+
+function renderSummary() {
+  el('title').textContent = '글로벌 AI ETF — Summary';
+  const dates = ETFS.map(e => (SUMMARY.breakdown[e.ticker] || {}).date).filter(Boolean);
+  el('subtitle').textContent = dates.length
+    ? `ETF 3종 섹터 비교 · 최신 기준일 ${dates.sort().pop()}`
+    : 'ETF 3종 섹터 비교';
+  el('basisWarn').style.display = 'none';
+  el('staleWarn').style.display = 'none';
+  el('content').style.display = 'none';
+  el('emptyState').style.display = 'none';
+  el('summaryPanel').style.display = '';
+  renderSectorGrid();
+  renderSectorEvents();
+}
+
 /* ---------- ETF 하나를 통째로 다시 그린다 ---------- */
 function renderEtf() {
+  if (currentTicker === SUMMARY_KEY) { renderSummary(); return; }
+  el('summaryPanel').style.display = 'none';
   const meta = ETFS.find(e => e.ticker === currentTicker);
   const p = PAYLOADS[currentTicker];
 
@@ -325,6 +445,19 @@ function renderEtf() {
   el('subtitle').textContent = p.prev_date
     ? `기준일 ${p.latest_date} · 전일 ${p.prev_date} 대비`
     : `기준일 ${p.latest_date} · 비교할 이전 영업일 없음`;
+
+  // 다른 ETF는 최신인데 이것만 뒤처져 있으면 조용히 넘어가지 않고 알린다
+  var newest = ETFS.map(e => (PAYLOADS[e.ticker] || {}).latest_date)
+                   .filter(Boolean).sort().pop();
+  if (newest && p.latest_date < newest) {
+    el('staleWarn').style.display = 'block';
+    var noteText = (BASES[currentTicker] || {}).note || '';
+    el('staleWarn').innerHTML =
+      `이 ETF의 데이터는 <b>${esc(p.latest_date)}</b> 에서 멈춰 있습니다 ` +
+      `(다른 ETF는 ${esc(newest)} 기준). ${esc(noteText)}`;
+  } else {
+    el('staleWarn').style.display = 'none';
+  }
 
   const cov = BASES[currentTicker] || {};
   if (!cov.basis || cov.basis === '운용사 공시 비중') {
@@ -366,7 +499,7 @@ renderEtf();
 """
 
 
-def render(payloads: dict, bases: dict) -> str:
+def render(payloads: dict, bases: dict, summary_data: dict) -> str:
     etf_meta = [{"ticker": e["ticker"], "name": e["name"], "short": e["short"]} for e in ETFS]
 
     name_colors = {}
@@ -381,6 +514,7 @@ def render(payloads: dict, bases: dict) -> str:
         .replace("__PAYLOADS__", json.dumps(payloads, ensure_ascii=False))
         .replace("__NAME_COLORS__", json.dumps(name_colors, ensure_ascii=False))
         .replace("__BASES__", json.dumps(bases, ensure_ascii=False))
+        .replace("__SUMMARY__", json.dumps(summary_data, ensure_ascii=False))
     )
     generated = datetime.now(KST).strftime("%Y-%m-%d %H:%M")
 
@@ -400,9 +534,25 @@ def render(payloads: dict, bases: dict) -> str:
   <p class="sub" id="subtitle"></p>
 
   <div class="warn" id="basisWarn" style="display:none;"></div>
+  <div class="warn" id="staleWarn" style="display:none;"></div>
 
   <div id="emptyState" class="empty-state" style="display:none;">
     수집된 데이터가 아직 없습니다. 첫 수집이 성공하면 이 자리에 Top10이 나타납니다.
+  </div>
+
+  <div id="summaryPanel" style="display:none;">
+    <div class="card">
+      <h2>주요 투자 섹터</h2>
+      <p class="muted" style="margin:-8px 0 16px;">각 ETF의 최신 기준일 기준 · 섹터 아래는 그 섹터에 속한 상위 종목</p>
+      <div class="sector-grid" id="sectorGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>섹터 변화</h2>
+      <p class="muted" style="margin:-8px 0 14px;">직전 수집일 대비 섹터 비중이 1.5%p 이상 움직인 경우만 기록합니다 · 최신순 누적</p>
+      <div id="sectorEvents"></div>
+      <div id="sectorMoreWrap"></div>
+    </div>
   </div>
 
   <div id="content">
@@ -478,17 +628,24 @@ def render(payloads: dict, bases: dict) -> str:
 
 
 def main() -> int:
-    payloads, bases = {}, {}
+    payloads, bases, per_etf = {}, {}, {}
     for etf in ETFS:
         records, coverage = load_records(etf["ticker"])
+        per_etf[etf["ticker"]] = records
         payloads[etf["ticker"]] = build_payload(records)
+        if etf.get("note"):
+            coverage = {**(coverage or {}), "note": etf["note"]}
         bases[etf["ticker"]] = coverage
 
+    summary_data = summary_mod.build(per_etf, ETFS)
+
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
-    (DOCS_DIR / "index.html").write_text(render(payloads, bases), encoding="utf-8")
+    (DOCS_DIR / "index.html").write_text(
+        render(payloads, bases, summary_data), encoding="utf-8")
     (DOCS_DIR / ".nojekyll").write_text("", encoding="utf-8")
 
     print(f"[렌더 완료] {DOCS_DIR / 'index.html'}")
+    print(f"  섹터 변화 이벤트 {len(summary_data['events'])}건")
     for etf in ETFS:
         p = payloads[etf["ticker"]]
         if not p:

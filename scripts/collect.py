@@ -67,9 +67,10 @@ def collect_etf(etf: dict, dates: list[str], force: bool) -> int:
     print(f"\n── {name} ({ticker}) · {etf['source']}")
 
     if not etf.get("backfill", False):
-        # 사이트가 과거를 안 주므로 오늘치만 의미가 있다
+        # 사이트가 과거를 안 주거나 접근이 막혀 있으므로 최신일만 시도한다
         dates = dates[:1]
-        print("   과거 조회 미지원 → 최신일만 수집")
+        note = etf.get("note")
+        print(f"   {note}" if note else "   과거 조회 미지원 → 최신일만 수집")
 
     saved = 0
     errors: dict[str, int] = {}
