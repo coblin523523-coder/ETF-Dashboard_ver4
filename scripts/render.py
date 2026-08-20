@@ -92,24 +92,29 @@ CSS = """
   .etf-tabs button { flex: 0 0 auto; border: 0.5px solid var(--border); background: var(--card);
     color: var(--text-secondary); padding: 8px 14px; border-radius: 999px; font-size: 13px;
     cursor: pointer; font-family: inherit; white-space: nowrap; }
-  .etf-tabs button.active { background: var(--accent); border-color: var(--accent);
-    color: #fff; font-weight: 600; }
+  .etf-tabs button { background: #6b6a64; border-color: #6b6a64; color: #fff; }
+  .etf-tabs button:hover { background: var(--text); }
+  .etf-tabs button.active { background: var(--text); border-color: var(--text);
+    color: #fff; font-weight: 600; box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--text); }
+  .badge[data-t] { font-weight: 600; }
   .warn { background: #fff8e6; border: 0.5px solid #f0d089; color: #6b5312;
     border-radius: 10px; padding: 10px 13px; font-size: 12.5px; margin-bottom: 18px; }
   /* Summary 탭 */
   .sector-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
   @media (max-width: 760px) { .sector-grid { grid-template-columns: 1fr; } }
-  .sector-col h3 { font-size: 13px; font-weight: 600; margin: 0 0 2px; }
-  .sector-col .col-date { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+  .sector-col h3 { font-size: 16px; font-weight: 700; margin: 0 0 3px; letter-spacing: -0.2px; }
+  .sector-col h3[data-t] { padding-left: 0; }
+  .sector-col .col-date { font-size: 11.5px; color: var(--text-muted); margin-bottom: 6px;
+    padding-bottom: 10px; border-bottom: 1.5px solid var(--text); }
   .sector-item { padding: 9px 0; border-bottom: 0.5px solid var(--border); }
   .sector-item:last-child { border-bottom: none; }
   .sector-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  .sector-name { font-size: 12.5px; font-weight: 600; }
-  .sector-pct { font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .sector-cnt { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+  .sector-name { font-size: 14.5px; font-weight: 600; }
+  .sector-pct { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sector-cnt { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 5px; }
   .sector-bar { height: 3px; background: var(--border); border-radius: 2px; margin: 6px 0 5px; overflow: hidden; }
   .sector-bar > i { display: block; height: 100%; background: var(--accent); }
-  .sector-members { font-size: 11px; color: var(--text-muted); line-height: 1.55; }
+  .sector-members { font-size: 11.5px; color: var(--text-muted); line-height: 1.6; }
   .ev-scroll { max-height: 560px; overflow-y: auto; border: 0.5px solid var(--border);
     border-radius: 10px; padding: 2px 14px; }
   @media (max-width: 600px) { .ev-scroll { max-height: 420px; padding: 2px 10px; } }
@@ -120,8 +125,8 @@ CSS = """
   .ev-date { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
   .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px;
     background: var(--bg); border: 0.5px solid var(--border); color: var(--text-secondary); }
-  .ev-sector { font-size: 13px; font-weight: 600; }
-  .ev-delta { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .ev-sector { font-size: 14.5px; font-weight: 600; }
+  .ev-delta { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .ev-drivers { font-size: 11.5px; color: var(--text-secondary); margin-top: 5px; line-height: 1.6; }
   .ev-drivers b { font-variant-numeric: tabular-nums; }
   .empty-state { text-align: center; padding: 40px 16px; color: var(--text-secondary); font-size: 13px; }
@@ -340,20 +345,19 @@ function renderView(view) {
 
 /* ---------- Summary 탭 ---------- */
 function renderSectorGrid() {
-  const order = SUMMARY.sector_order || [];
   el('sectorGrid').innerHTML = ETFS.map(e => {
     const b = SUMMARY.breakdown[e.ticker];
     if (!b) {
-      return `<div class="sector-col"><h3>${esc(e.short)}</h3>
-        <div class="col-date">데이터 없음</div></div>`;
+      return `<div class="sector-col"><h3 data-t="${e.ticker}">${esc(e.short)}</h3>
+        <div class="col-date" data-t="${e.ticker}">데이터 없음</div></div>`;
     }
-    const bySector = {};
-    b.sectors.forEach(x => { bySector[x.sector] = x; });
-    const max = Math.max.apply(null, b.sectors.map(x => x.weight).concat([1]));
+    // 각 ETF 안에서 비중이 큰 섹터부터 (summary 단계에서 이미 내림차순)
+    const list = b.sectors.slice().sort((p, q) => q.weight - p.weight);
+    const max = Math.max.apply(null, list.map(x => x.weight).concat([1]));
 
-    const items = order.map(sec => {
-      const x = bySector[sec];
+    const items = list.map(x => {
       if (!x || x.weight <= 0) return '';
+      const sec = x.sector;
       const names = x.members.map(m => esc(m.name) + ' ' + m.weight.toFixed(1)).join(' · ');
       const more = x.count > x.members.length ? ` 외 ${x.count - x.members.length}` : '';
       return `<div class="sector-item">
@@ -367,8 +371,8 @@ function renderSectorGrid() {
     }).join('');
 
     return `<div class="sector-col">
-      <h3>${esc(e.short)}</h3>
-      <div class="col-date">${esc(b.date)} 기준</div>
+      <h3 data-t="${e.ticker}">${esc(e.short)}</h3>
+      <div class="col-date" data-t="${e.ticker}">${esc(b.date)} 기준</div>
       ${items}
     </div>`;
   }).join('');
@@ -392,7 +396,7 @@ function renderSectorEvents() {
     return `<div class="ev-row">
       <div class="ev-head">
         <span class="ev-date">${esc(ev.date)}</span>
-        <span class="badge">${esc(ev.etf)}</span>
+        <span class="badge" data-t="${esc(ev.ticker)}">${esc(ev.etf)}</span>
         <span class="ev-sector">${esc(ev.sector)}</span>
         <span class="ev-delta ${up ? 'up' : 'down'}">${ev.prev.toFixed(1)}% → ${ev.cur.toFixed(1)}% (${up ? '+' : ''}${ev.delta.toFixed(1)}%p)</span>
       </div>
@@ -494,6 +498,28 @@ renderEtf();
 """
 
 
+def etf_color_css() -> str:
+    """ETF별 브랜드 색을 탭·배지·열 제목에 적용하는 CSS를 config 에서 만들어낸다."""
+    out = []
+    for e in ETFS:
+        c = e.get("color")
+        if not c:
+            continue
+        t = e["ticker"]
+        out.append(f"""
+  .etf-tabs button[data-ticker="{t}"] {{
+    background: {c['base']}; border-color: {c['base']}; color: #fff; font-weight: 600; }}
+  .etf-tabs button[data-ticker="{t}"]:hover {{ background: {c['solid']}; }}
+  .etf-tabs button[data-ticker="{t}"].active {{
+    background: {c['solid']}; border-color: {c['solid']}; color: #fff;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px {c['solid']}; }}
+  .badge[data-t="{t}"] {{
+    background: {c['base']}; border-color: {c['base']}; color: #fff; }}
+  .sector-col h3[data-t="{t}"] {{ color: {c['solid']}; }}
+  .sector-col .col-date[data-t="{t}"] {{ border-bottom-color: {c['solid']}; }}""")
+    return "".join(out)
+
+
 def render(payloads: dict, bases: dict, summary_data: dict) -> str:
     etf_meta = [{"ticker": e["ticker"], "name": e["name"], "short": e["short"]} for e in ETFS]
 
@@ -519,7 +545,7 @@ def render(payloads: dict, bases: dict, summary_data: dict) -> str:
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>글로벌 AI ETF Top10 대시보드</title>
-<style>{CSS}</style>
+<style>{CSS}{etf_color_css()}</style>
 </head>
 <body>
 <div class="wrap">

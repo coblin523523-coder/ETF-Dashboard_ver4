@@ -17,6 +17,9 @@ ETFS = [
         "ticker": "456600",
         "name": "TIMEFOLIO 글로벌AI인공지능액티브",
         "short": "TIMEFOLIO AI",
+        # 탭·배지는 항상 브랜드색 바탕에 흰 글자다.
+        # base=평소 바탕, solid=선택됐을 때 바탕(더 진하게)
+        "color": {"base": "#2a4a7c", "solid": "#14305c"},
         "source": "timefolio",
         "params": {"cate": "001", "idx": "6"},
         # 사이트가 과거 날짜를 제공하지 않는다. 오늘치만 받아 누적한다.
@@ -26,6 +29,7 @@ ETFS = [
         "ticker": "471040",
         "name": "KoAct 글로벌AI&로봇액티브",
         "short": "KoAct AI·로봇",
+        "color": {"base": "#2470c9", "solid": "#14539f"},
         "source": "samsung",
         "params": {"fund_id": "2ETFL3"},
         "backfill": True,
@@ -34,6 +38,7 @@ ETFS = [
         "ticker": "466950",
         "name": "TIGER 글로벌AI액티브",
         "short": "TIGER AI",
+        "color": {"base": "#c44d1a", "solid": "#8f3609"},
         "source": "mirae",
         "params": {"ksd_fund": "KR7466950003"},
         # 미래에셋은 해외 데이터센터 IP를 방화벽에서 막는다(홈페이지조차 403).
