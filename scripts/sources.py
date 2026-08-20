@@ -227,6 +227,9 @@ def _mirae_cffi(ksd_fund: str):
     try:
         from curl_cffi import requests as creq
     except ImportError:
+        print("    [!] curl_cffi 가 설치되어 있지 않습니다. "
+              "requirements.txt 에 'curl_cffi>=0.7' 이 있는지 확인하세요.")
+        print("        (이게 없으면 크롬 지문 위장을 시도조차 못 합니다)")
         return None
 
     sess = creq.Session(impersonate="chrome")
@@ -242,6 +245,58 @@ def _mirae_cffi(ksd_fund: str):
         pass
     _MIRAE_CFFI = sess
     return sess
+
+
+_MIRAE_DIAGNOSED = False
+
+
+def _diagnose_mirae(ksd_fund: str) -> None:
+    """403 이 났을 때 원인을 한 번만 진단해 출력한다.
+
+    IP 차단이면 홈페이지조차 403 이고, 지문 차단이면 홈페이지는 열린다.
+    둘은 대응이 완전히 달라서 구분이 중요하다.
+    """
+    global _MIRAE_DIAGNOSED
+    if _MIRAE_DIAGNOSED:
+        return
+    _MIRAE_DIAGNOSED = True
+
+    detail = f"{MIRAE_DETAIL}?ksdFund={ksd_fund}"
+    print("\n    ── 미래에셋 접근 진단 ──")
+
+    def probe(label, fn):
+        try:
+            r = fn()
+            body = (getattr(r, "text", "") or "")[:120].replace("\n", " ")
+            print(f"      {label:<28} {r.status_code}  ({len(r.content):,} bytes)")
+            if r.status_code != 200 and body:
+                print(f"          본문: {body}")
+            return r
+        except Exception as exc:
+            print(f"      {label:<28} 예외 {type(exc).__name__}: {str(exc)[:70]}")
+            return None
+
+    sess = _session()
+    probe("홈페이지 (requests)",
+          lambda: sess.get("https://investments.miraeasset.com/", timeout=TIMEOUT))
+    r = probe("상세페이지 (requests)", lambda: sess.get(detail, timeout=TIMEOUT))
+    if r is not None and r.status_code == 200:
+        has = ("Advanced Micro" in r.text) or ("구성종목" in r.text)
+        print(f"          상세페이지 HTML 에 구성종목 있음? {'예' if has else '아니오'}")
+
+    cffi = _mirae_cffi(ksd_fund)
+    if cffi is None:
+        print("      curl_cffi                    미설치 — 위장 시도 불가")
+    else:
+        probe("상세페이지 (크롬 위장)", lambda: cffi.get(detail, timeout=TIMEOUT))
+        probe("ajax (크롬 위장)", lambda: cffi.post(
+            MIRAE_URL,
+            params={"ksdFund": ksd_fund, "prfPrd": "Week01",
+                    "fixDate": "20260814", "listCnt": "300"},
+            timeout=TIMEOUT))
+
+    print("      판독: 홈페이지도 403 → IP 차단 / 홈페이지만 200 → 지문 차단")
+    print("    ────────────────────────\n")
 
 
 def fetch_mirae(params: dict, date: str) -> pd.DataFrame:
@@ -272,6 +327,7 @@ def fetch_mirae(params: dict, date: str) -> pd.DataFrame:
             df = _mirae_from_page(params["ksd_fund"], date)
             if not df.empty:
                 return df
+            _diagnose_mirae(params["ksd_fund"])
             r.raise_for_status()
 
     data = resp.json().get("rtnData") or []
