@@ -110,6 +110,10 @@ CSS = """
   .sector-bar { height: 3px; background: var(--border); border-radius: 2px; margin: 6px 0 5px; overflow: hidden; }
   .sector-bar > i { display: block; height: 100%; background: var(--accent); }
   .sector-members { font-size: 11px; color: var(--text-muted); line-height: 1.55; }
+  .ev-scroll { max-height: 560px; overflow-y: auto; border: 0.5px solid var(--border);
+    border-radius: 10px; padding: 2px 14px; }
+  @media (max-width: 600px) { .ev-scroll { max-height: 420px; padding: 2px 10px; } }
+  .ev-count { font-size: 11.5px; color: var(--text-muted); margin-top: 8px; text-align: right; }
   .ev-row { padding: 11px 0; border-bottom: 0.5px solid var(--border); }
   .ev-row:last-of-type { border-bottom: none; }
   .ev-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
@@ -140,7 +144,6 @@ const NAME_COLORS = __NAME_COLORS__;
 const BASES = __BASES__;
 const SUMMARY = __SUMMARY__;
 const SUMMARY_KEY = '__summary__';
-const VISIBLE_EVENTS = 12;
 const GRAY = '#d3d1c7';
 const VISIBLE_HISTORY = 5;
 
@@ -375,38 +378,30 @@ function renderSectorEvents() {
   const evs = SUMMARY.events || [];
   if (!evs.length) {
     el('sectorEvents').innerHTML = '<p class="muted">아직 기록된 섹터 변화가 없습니다.</p>';
-    el('sectorMoreWrap').innerHTML = '';
+    el('sectorEventCount').textContent = '';
     return;
   }
 
-  el('sectorEvents').innerHTML = evs.map((ev, i) => {
+  el('sectorEvents').innerHTML = evs.map(ev => {
     const up = ev.delta > 0;
-    const cls = up ? 'up' : 'down';
     const drivers = (ev.drivers || []).map(d => {
       const tag = d.status ? ` <span class="badge">${esc(d.status)}</span>` : '';
       const sign = d.delta > 0 ? '+' : '';
       return `${esc(d.name)} <b class="${d.delta > 0 ? 'up' : 'down'}">${sign}${d.delta.toFixed(2)}%p</b>${tag}`;
     }).join(' · ');
-    return `<div class="ev-row${i >= VISIBLE_EVENTS ? ' hidden-ev' : ''}"${i >= VISIBLE_EVENTS ? ' style="display:none;"' : ''}>
+    return `<div class="ev-row">
       <div class="ev-head">
         <span class="ev-date">${esc(ev.date)}</span>
         <span class="badge">${esc(ev.etf)}</span>
         <span class="ev-sector">${esc(ev.sector)}</span>
-        <span class="ev-delta ${cls}">${ev.prev.toFixed(1)}% → ${ev.cur.toFixed(1)}% (${up ? '+' : ''}${ev.delta.toFixed(1)}%p)</span>
+        <span class="ev-delta ${up ? 'up' : 'down'}">${ev.prev.toFixed(1)}% → ${ev.cur.toFixed(1)}% (${up ? '+' : ''}${ev.delta.toFixed(1)}%p)</span>
       </div>
       <div class="ev-drivers">${esc(ev.prev_date)} 대비${drivers ? ' · 주도 ' + drivers : ''}</div>
     </div>`;
   }).join('');
 
-  const rest = Math.max(0, evs.length - VISIBLE_EVENTS);
-  el('sectorMoreWrap').innerHTML = rest > 0
-    ? `<button class="more-btn" id="evMoreBtn">더보기 (${rest}건)</button>` : '';
-  if (rest > 0) {
-    el('evMoreBtn').addEventListener('click', function () {
-      document.querySelectorAll('.hidden-ev').forEach(x => x.style.display = 'block');
-      this.style.display = 'none';
-    });
-  }
+  el('sectorEventCount').textContent = `총 ${evs.length}건 · 위아래로 스크롤`;
+  el('sectorEvents').parentElement.scrollTop = 0;
 }
 
 function renderSummary() {
@@ -550,8 +545,8 @@ def render(payloads: dict, bases: dict, summary_data: dict) -> str:
     <div class="card">
       <h2>섹터 변화</h2>
       <p class="muted" style="margin:-8px 0 14px;">직전 수집일 대비 섹터 비중이 1.5%p 이상 움직인 경우만 기록합니다 · 최신순 누적</p>
-      <div id="sectorEvents"></div>
-      <div id="sectorMoreWrap"></div>
+      <div class="ev-scroll"><div id="sectorEvents"></div></div>
+      <div class="ev-count" id="sectorEventCount"></div>
     </div>
   </div>
 
