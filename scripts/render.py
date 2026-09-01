@@ -71,7 +71,15 @@ CSS = """
   .view-toggle { display: inline-flex; background: var(--bg); border: 0.5px solid var(--border);
     border-radius: 8px; padding: 3px; gap: 2px; }
   .view-toggle button { border: none; background: transparent; padding: 5px 12px; font-size: 12px;
-    border-radius: 6px; cursor: pointer; color: var(--text-secondary); font-family: inherit; }
+    border-radius: 6px; cursor: pointer; color: var(--text-secondary); font-family: inherit;
+    white-space: nowrap; }
+  /* 섹터 변화 필터는 ETF 이름이 길어 좁은 화면에서 가로 스크롤로 넘긴다 */
+  #evFilter { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; }
+  #evFilter::-webkit-scrollbar { display: none; }
+  @media (max-width: 600px) {
+    #evFilter button { padding: 5px 9px; font-size: 11px; }
+  }
   .view-toggle button.active { background: var(--card); color: var(--text); font-weight: 600;
     box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
   .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -389,10 +397,36 @@ function renderSectorGrid() {
   }).join('');
 }
 
+/* 섹터 변화를 ETF 별로 걸러 본다. 'all' 이면 3종 전부. */
+let eventFilter = 'all';
+
+function buildEventFilter() {
+  const box = el('evFilter');
+  if (!box || box.dataset.ready) return;
+  box.innerHTML = [`<button type="button" data-ev="all" class="active">전체</button>`]
+    .concat(ETFS.map(e => `<button type="button" data-ev="${e.ticker}">${esc(e.short)}</button>`))
+    .join('');
+  box.dataset.ready = '1';
+  box.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      eventFilter = btn.dataset.ev;
+      box.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+      renderSectorEvents();
+    });
+  });
+}
+
 function renderSectorEvents() {
-  const evs = SUMMARY.events || [];
+  buildEventFilter();
+  const all = SUMMARY.events || [];
+  const evs = eventFilter === 'all' ? all : all.filter(ev => ev.ticker === eventFilter);
+  const label = eventFilter === 'all'
+    ? '' : ((ETFS.find(e => e.ticker === eventFilter) || {}).short || '');
+
   if (!evs.length) {
-    el('sectorEvents').innerHTML = '<p class="muted">아직 기록된 섹터 변화가 없습니다.</p>';
+    el('sectorEvents').innerHTML = all.length
+      ? `<p class="muted">${esc(label)}에는 아직 기록된 섹터 변화가 없습니다.</p>`
+      : '<p class="muted">아직 기록된 섹터 변화가 없습니다.</p>';
     el('sectorEventCount').textContent = '';
     return;
   }
@@ -415,7 +449,9 @@ function renderSectorEvents() {
     </div>`;
   }).join('');
 
-  el('sectorEventCount').textContent = `총 ${evs.length}건 · 위아래로 스크롤`;
+  el('sectorEventCount').textContent = eventFilter === 'all'
+    ? `총 ${evs.length}건 · 위아래로 스크롤`
+    : `${label} ${evs.length}건 (전체 ${all.length}건 중) · 위아래로 스크롤`;
   el('sectorEvents').parentElement.scrollTop = 0;
 }
 
@@ -580,8 +616,11 @@ def render(payloads: dict, bases: dict, summary_data: dict) -> str:
     </div>
 
     <div class="card">
-      <h2>섹터 변화</h2>
-      <p class="muted" style="margin:-8px 0 14px;">직전 수집일 대비 섹터 비중이 1.5%p 이상 움직인 경우만 기록합니다 · 최신순 누적</p>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; flex-wrap:wrap; gap:8px;">
+        <h2 style="margin:0;">섹터 변화</h2>
+        <div class="view-toggle" id="evFilter"></div>
+      </div>
+      <p class="muted" style="margin:2px 0 14px;">직전 수집일 대비 섹터 비중이 1.5%p 이상 움직인 경우만 기록합니다 · 최신순 누적</p>
       <div class="ev-scroll"><div id="sectorEvents"></div></div>
       <div class="ev-count" id="sectorEventCount"></div>
     </div>
