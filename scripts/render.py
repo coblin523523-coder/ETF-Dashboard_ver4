@@ -36,10 +36,16 @@ CSS = """
   .wrap { max-width: 900px; margin: 0 auto; }
   h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
   .sub { color: var(--text-secondary); font-size: 13px; margin: 0 0 24px; }
-  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  /* 기준일·편입·편출을 항상 한 줄에. 기준일만 크게 두고 나머지는 절반 크기로 줄인다 */
+  .metrics { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 10px; margin-bottom: 24px; }
   .metric { background: var(--card); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px 16px; }
   .metric .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
-  .metric .value { font-size: 22px; font-weight: 600; }
+  .metric .value { font-size: 22px; font-weight: 600; white-space: nowrap; }
+  .metric.primary { flex: 0 1 auto; }
+  .metric.compact { flex: 0 0 auto; padding: 14px 13px; display: flex;
+    flex-direction: column; justify-content: center; }
+  .metric.compact .label { font-size: 11px; margin-bottom: 2px; }
+  .metric.compact .value { font-size: 13px; }
   .card { background: var(--card); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 20px; }
   .card h2 { font-size: 15px; font-weight: 600; margin: 0 0 14px; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -163,7 +169,11 @@ CSS = """
   @media (max-width: 600px) {
     body { padding: 1rem 0.85rem 2rem; }
     h1 { font-size: 17px; }
+    .metrics { gap: 7px; }
+    .metric { padding: 11px 12px; }
     .metric .value { font-size: 19px; }
+    .metric.compact { padding: 11px 10px; }
+    .metric.compact .value { font-size: 12px; }
     .card { padding: 1rem; }
     table { font-size: 12.5px; }
     td, th { padding: 7px 5px; }
@@ -517,7 +527,6 @@ function renderEtf() {
   el('mDate').textContent = p.latest_date;
   el('mIn').textContent = p.entries.length + '건';
   el('mOut').textContent = p.exits.length + '건';
-  el('mDays').textContent = p.dates.length + '일';
 
   const sel = el('top10DateSelect');
   sel.innerHTML = p.dates.slice().reverse()
@@ -628,10 +637,9 @@ def render(payloads: dict, bases: dict, summary_data: dict) -> str:
 
   <div id="content">
     <div class="metrics">
-      <div class="metric"><div class="label">기준일</div><div class="value" id="mDate"></div></div>
-      <div class="metric"><div class="label">편입</div><div class="value" id="mIn"></div></div>
-      <div class="metric"><div class="label">편출</div><div class="value" id="mOut"></div></div>
-      <div class="metric"><div class="label">수집일수</div><div class="value" id="mDays"></div></div>
+      <div class="metric primary"><div class="label">기준일</div><div class="value" id="mDate"></div></div>
+      <div class="metric compact"><div class="label">편입</div><div class="value" id="mIn"></div></div>
+      <div class="metric compact"><div class="label">편출</div><div class="value" id="mOut"></div></div>
     </div>
 
     <div class="card">
