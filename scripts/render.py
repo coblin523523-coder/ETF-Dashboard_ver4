@@ -40,12 +40,12 @@ CSS = """
   .metrics { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 10px; margin-bottom: 24px; }
   .metric { background: var(--card); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px 16px; }
   .metric .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
-  .metric .value { font-size: 22px; font-weight: 600; white-space: nowrap; }
+  .metric .value { font-size: 19px; font-weight: 600; white-space: nowrap; }
   .metric.primary { flex: 0 1 auto; }
-  .metric.compact { flex: 0 0 auto; padding: 14px 13px; display: flex;
+  .metric.compact { flex: 0 0 auto; padding: 14px 15px; display: flex;
     flex-direction: column; justify-content: center; }
-  .metric.compact .label { font-size: 11px; margin-bottom: 2px; }
-  .metric.compact .value { font-size: 13px; }
+  .metric.compact .label { font-size: 12px; margin-bottom: 4px; }
+  .metric.compact .value { font-size: 16px; }
   .card { background: var(--card); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 20px; }
   .card h2 { font-size: 15px; font-weight: 600; margin: 0 0 14px; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -171,9 +171,9 @@ CSS = """
     h1 { font-size: 17px; }
     .metrics { gap: 7px; }
     .metric { padding: 11px 12px; }
-    .metric .value { font-size: 19px; }
-    .metric.compact { padding: 11px 10px; }
-    .metric.compact .value { font-size: 12px; }
+    .metric .value { font-size: 17px; }
+    .metric.compact { padding: 11px 11px; }
+    .metric.compact .value { font-size: 14px; }
     .card { padding: 1rem; }
     table { font-size: 12.5px; }
     td, th { padding: 7px 5px; }
