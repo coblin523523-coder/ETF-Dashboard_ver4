@@ -26,6 +26,7 @@ SECTOR_ORDER = [
     "우주·방산",
     "양자컴퓨팅",
     "핀테크·디지털자산",
+    "AI 헬스케어·바이오",
     "기타",
     "현금성·파생",
 ]
@@ -51,7 +52,11 @@ RULES: list[tuple[str, tuple[str, ...]]] = [
         "현금", "원화예금", "설정현금", "CASH", "NASDAQ 100 E MINI", "E MINI INDEX",
     )),
     ("기타", (
-        "KODEX", "TIME 차이나", "TIME 글로벌", "KOACT",
+        "KODEX", "TIME 차이나", "TIME 글로벌", "KOACT", "CINTAS", "EVERPURE",
+    )),
+    ("AI 헬스케어·바이오", (
+        "ELI LILLY", "ABBVIE", "ILLUMINA", "GUARDANT HEALTH", "NATERA",
+        "THERMO FISHER", "RECURSION", "SCHRODINGER", "SIEMENS HEALTHINEERS",
     )),
     ("메모리·스토리지", (
         "SK HYNIX", "SK하이닉스", "MICRON", "KIOXIA", "SANDISK", "WESTERN DIGITAL",
@@ -60,8 +65,10 @@ RULES: list[tuple[str, tuple[str, ...]]] = [
     ("반도체 장비·소재", (
         "ASML", "APPLIED MATERIALS", "LAM RESEARCH", "KLA", "TERADYNE", "ADVANTEST",
         "ONTO INNOVATION", "FORMFACTOR", "AEHR", "NAURA", "KEYSIGHT", "IBIDEN",
-        "MURATA", "삼성전기", "LG이노텍", "SYNOPSYS", "SUZHOU DONGSHAN",
+        "MURATA", "삼성전기", "LG이노텍", "SYNOPSYS", "CADENCE", "SUZHOU DONGSHAN",
         "피에스케이", "미코", "테스", "가온칩스", "티에스이", "고영", "AXT",
+        "DISCO", "ASMPT", "KEYENCE", "TOKYO ELECTRON", "SCREEN HOLDINGS", "KOKUSAI",
+        "KING YUAN",
     )),
     ("네트워크·광통신", (
         "ARISTA", "CIENA", "COHERENT", "LUMENTUM", "APPLIED OPTOELECTRONICS",
@@ -74,39 +81,48 @@ RULES: list[tuple[str, tuple[str, ...]]] = [
         "CREDO", "RAMBUS", "NAVITAS", "GLOBALFOUNDRIES", "HUA HONG", "HYGON",
         "TOWER SEMICONDUCTOR", "TEXAS INSTRUMENTS", "ANALOG DEVICES",
         "INFINEON", "GIGADEVICE", "SEMICONDUCTOR", "삼성전자",
+        "MEDIATEK", "MONOLITHIC POWER", "AMBARELLA", "CAMBRICON",
     )),
     ("클라우드·데이터센터", (
         "AMAZON", "MICROSOFT", "ORACLE", "COREWEAVE", "NEBIUS", "IREN",
         "DIGITALOCEAN", "DELL", "VERTIV", "CELESTICA", "COMFORT SYSTEMS",
+        "SUPER MICRO", "QUANTA COMPUTER", "LENOVO", "ASIA VITAL", "FUJITSU",
+        "NEC CORP", "WISTRON", "WIWYNN",
     )),
     ("AI 소프트웨어·보안", (
         "PALANTIR", "SNOWFLAKE", "MONGODB", "DATADOG", "DYNATRACE", "SERVICENOW",
         "SALESFORCE", "ATLASSIAN", "CLOUDFLARE", "AKAMAI", "FASTLY", "OKTA",
         "CROWDSTRIKE", "PALO ALTO", "FORTINET", "SAP", "INTERNATIONAL BUSINESS",
         "SAMSARA", "TEMPUS", "ACCENTURE", "MINIMAX", "Z AI", "KNOWLEDGE ATLAS",
-        "삼성에스디에스", "현대오토에버",
+        "삼성에스디에스", "현대오토에버", "ADOBE", "ELASTIC", "UNITY", "MONDAY",
+        "ZSCALER", "GITLAB", "TWILIO", "WORKDAY", "PEGASYSTEMS", "HUBSPOT",
+        "SPLUNK", "CONFLUENT",
     )),
     ("인터넷·플랫폼", (
         "ALPHABET", "META PLATFORMS", "NETFLIX", "REDDIT", "BAIDU", "TENCENT",
         "ALIBABA", "PDD", "MERCADOLIBRE", "EBAY", "ZILLOW", "TAKE TWO",
         "ROBLOX", "APPLOVIN", "TRADE DESK", "NAVER", "카카오", "YANDEX",
-        "APPLE", "SONY", "XIAOMI", "ECHOSTAR",
+        "APPLE", "SONY", "XIAOMI", "ECHOSTAR", "SPOTIFY", "WALMART", "COSTCO",
+        "UBER", "LY CORP", "GRAB", "RECRUIT HOLDINGS",
     )),
     ("로보틱스·자율주행", (
         "TESLA", "UBTECH", "SERVE ROBOTICS", "INTUITIVE SURGICAL", "AEROVIRONMENT",
         "ONDAS", "로보티즈", "레인보우로보틱스", "에스피지", "하이젠알앤엠", "스피어",
-        "현대모비스", "현대차", "ROPER",
+        "현대모비스", "현대차", "ROPER", "DEERE", "HORIZON ROBOTICS", "FANUC",
+        "YASKAWA", "KUKA", "SYMBOTIC", "ROCKWELL AUTOMATION",
     )),
     ("우주·방산", (
         "ROCKET LAB", "FIREFLY", "PLANET LABS", "AST SPACEMOBILE",
         "INTUITIVE MACHINES", "SPACE EXPLORATION", "ELBIT", "BWX",
+        "MITSUBISHI HEAVY", "HANWHA AEROSPACE", "LIG NEX1", "KAI", "LOCKHEED",
     )),
     ("양자컴퓨팅", (
         "IONQ", "D WAVE", "RIGETTI", "XANADU",
     )),
     ("핀테크·디지털자산", (
         "COINBASE", "CIRCLE INTERNET", "ROBINHOOD", "SOFI", "INTERACTIVE BROKERS",
-        "STRATEGY", "LEMONADE",
+        "STRATEGY", "LEMONADE", "MASTERCARD", "VISA", "PAYPAL", "BLOCK",
+        "RIOT PLATFORMS",
     )),
     ("전력·에너지 인프라", (
         "GE VERNOVA", "EATON", "VISTRA", "CONSTELLATION", "TALEN", "NUSCALE",
@@ -115,10 +131,9 @@ RULES: list[tuple[str, tuple[str, ...]]] = [
         "CAMECO", "CENTRUS", "URANIUM", "ENERGY FUELS", "VICOR", "SHOALS",
         "GANFENG", "MP MATERIALS", "WEICHAI", "두산에너빌리티", "HD현대일렉트릭",
         "LS ELECTRIC", "효성중공업", "SNT에너지", "비에이치아이", "삼성SDI",
-        "비나텍", "RF머트리얼즈",
-    )),
-    ("기타", (
-        "NATERA",
+        "비나텍", "RF머트리얼즈", "SCHNEIDER ELECTRIC", "HITACHI", "NEXTERA",
+        "NEXTPOWER", "BAKER HUGHES", "ABB LTD", "LEGRAND", "DUKE ENERGY",
+        "DOMINION ENERGY", "NEXANS", "SIEMENS",
     )),
 ]
 
@@ -137,6 +152,7 @@ SECTOR_SHORT = {
     "우주·방산": "우주방산",
     "양자컴퓨팅": "양자",
     "핀테크·디지털자산": "핀테크",
+    "AI 헬스케어·바이오": "바이오",
     "현금성·파생": "현금",
     "기타": "기타",
     "미분류": "미분류",
