@@ -117,7 +117,7 @@ RULES: list[tuple[str, tuple[str, ...]]] = [
         "MITSUBISHI HEAVY", "HANWHA AEROSPACE", "LIG NEX1", "KAI", "LOCKHEED",
     )),
     ("양자컴퓨팅", (
-        "IONQ", "D WAVE", "RIGETTI", "XANADU",
+        "IONQ", "D WAVE", "RIGETTI", "XANADU", "QUANTINUUM",
     )),
     ("핀테크·디지털자산", (
         "COINBASE", "CIRCLE INTERNET", "ROBINHOOD", "SOFI", "INTERACTIVE BROKERS",
